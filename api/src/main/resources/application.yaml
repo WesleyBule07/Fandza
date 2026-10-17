@@ -1,3 +1,35 @@
 spring:
   application:
     name: Fandza
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fandza
+    username: fandza
+    password: fandza
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: Africa/Maputo
+  flyway:
+    enabled: true
+  jackson:
+    time-zone: Africa/Maputo
+    date-format: yyyy-MM-dd'T'HH:mm:ssXXX
+
+server:
+  port: 8080
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:fandza;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
