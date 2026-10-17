@@ -1,0 +1,171 @@
+package com.fandza.app.Fandza.controller;
+
+import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import com.fandza.app.Fandza.dtos.auth.LoginRequest;
+import com.fandza.app.Fandza.dtos.guardian.GuardianRequest;
+import com.fandza.app.Fandza.repository.AppUserRepository;
+import com.fandza.app.Fandza.repository.LegalGuardianRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class GuardianControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private LegalGuardianRepository legalGuardianRepository;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
+
+    @BeforeEach
+    void cleanDatabase() {
+        cleanTables();
+    }
+
+    @AfterEach
+    void cleanDatabaseAfterTest() {
+        cleanTables();
+    }
+
+    private void cleanTables() {
+        legalGuardianRepository.deleteAll();
+        appUserRepository.deleteAll();
+    }
+
+    private GuardianRequest validRequest(String email) {
+        return new GuardianRequest("Maria Sitoe", email, "secret123", "+258840000000");
+    }
+
+    private Long createGuardianAndGetId(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/guardians")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest(email))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        return body.get("id").asLong();
+    }
+
+    private String loginAndGetToken(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest(email, "secret123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        return body.get("token").asText();
+    }
+
+    @Test
+    void createShouldReturn201WithoutPassword() throws Exception {
+        mockMvc.perform(post("/api/v1/guardians")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest("maria@fandza.co.mz"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(notNullValue()))
+                .andExpect(jsonPath("$.fullName").value("Maria Sitoe"))
+                .andExpect(jsonPath("$.email").value("maria@fandza.co.mz"))
+                .andExpect(jsonPath("$.phoneNumber").value("+258840000000"))
+                .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.userType").doesNotExist());
+    }
+
+    @Test
+    void createShouldReturn409WhenEmailAlreadyExists() throws Exception {
+        mockMvc.perform(post("/api/v1/guardians")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest("maria@fandza.co.mz"))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/guardians")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest("maria@fandza.co.mz"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void createShouldReturn400WithFieldErrorsWhenRequestIsInvalid() throws Exception {
+        GuardianRequest invalid = new GuardianRequest("", "not-an-email", "secret123", "");
+
+        mockMvc.perform(post("/api/v1/guardians")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.fullName").value(notNullValue()))
+                .andExpect(jsonPath("$.fieldErrors.email").value(notNullValue()))
+                .andExpect(jsonPath("$.fieldErrors.phoneNumber").value(notNullValue()));
+    }
+
+    @Test
+    void createShouldReturn409WhenEmailBelongsToDriver() throws Exception {
+        mockMvc.perform(post("/api/v1/drivers")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"fullName\":\"Jane Doe\",\"email\":\"shared@fandza.co.mz\","
+                                + "\"password\":\"secret123\",\"phoneNumber\":\"+258840000001\","
+                                + "\"licenseNumber\":\"L-1\",\"licenseExpiry\":\"2030-12-31T00:00:00+02:00\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/guardians")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest("shared@fandza.co.mz"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void getByIdShouldRequireAuthenticationAndReturn200Or404() throws Exception {
+        Long id = createGuardianAndGetId("maria@fandza.co.mz");
+        String token = loginAndGetToken("maria@fandza.co.mz");
+
+        mockMvc.perform(get("/api/v1/guardians/{id}", id))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/guardians/{id}", id)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        mockMvc.perform(get("/api/v1/guardians/{id}", 9999L)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void findAllShouldReturnPaginatedGuardians() throws Exception {
+        createGuardianAndGetId("maria@fandza.co.mz");
+        String token = loginAndGetToken("maria@fandza.co.mz");
+
+        mockMvc.perform(get("/api/v1/guardians")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content.length()").value(1));
+    }
+}

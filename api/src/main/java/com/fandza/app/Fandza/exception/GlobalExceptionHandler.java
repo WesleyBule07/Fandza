@@ -41,6 +41,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(GuardianNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleGuardianNotFound(
+            GuardianNotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleEmailConflict(
             EmailAlreadyExistsException ex, HttpServletRequest request) {
