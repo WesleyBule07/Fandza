@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.fandza.app.Fandza.dtos.auth.LoginRequest;
 import com.fandza.app.Fandza.dtos.driver.DriverRequest;
 import com.fandza.app.Fandza.entity.Driver;
 import com.fandza.app.Fandza.enums.AccountStatus;
@@ -81,6 +82,16 @@ class DriverControllerTest {
         return body.get("id").asLong();
     }
 
+    private String loginAndGetToken(String email) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest(email, "secret123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        return body.get("token").asText();
+    }
+
     @Test
     void createShouldReturn201WithPendingStatusAndHidePassword() throws Exception {
         mockMvc.perform(post("/api/v1/drivers")
@@ -126,23 +137,28 @@ class DriverControllerTest {
     @Test
     void getByIdShouldReturn200Or404() throws Exception {
         Long id = createDriverAndGetId("jane@fandza.co.mz");
+        String token = loginAndGetToken("jane@fandza.co.mz");
 
-        mockMvc.perform(get("/api/v1/drivers/{id}", id))
+        mockMvc.perform(get("/api/v1/drivers/{id}", id)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
-        mockMvc.perform(get("/api/v1/drivers/{id}", 9999L))
+        mockMvc.perform(get("/api/v1/drivers/{id}", 9999L)
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test
     void findAllShouldReturnPaginatedDrivers() throws Exception {
+        createDriverAndGetId("jane@fandza.co.mz");
+        String token = loginAndGetToken("jane@fandza.co.mz");
         driverRepository.save(new Driver("Ana Bila", "ana@fandza.co.mz", "hash"));
-        driverRepository.save(new Driver("Bento Chirindza", "bento@fandza.co.mz", "hash"));
 
-        mockMvc.perform(get("/api/v1/drivers"))
+        mockMvc.perform(get("/api/v1/drivers")
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2))
                 .andExpect(jsonPath("$.content.length()").value(2));
@@ -151,14 +167,17 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldActivateDriverAndRejectInvalidTransition() throws Exception {
         Long id = createDriverAndGetId("jane@fandza.co.mz");
+        String token = loginAndGetToken("jane@fandza.co.mz");
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON)
                         .content("{\"status\":\"ACTIVE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("ACTIVE"));
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON)
                         .content("{\"status\":\"PENDING\"}"))
                 .andExpect(status().isUnprocessableEntity())
@@ -168,8 +187,10 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldReturn400WhenStatusIsNull() throws Exception {
         Long id = createDriverAndGetId("jane@fandza.co.mz");
+        String token = loginAndGetToken("jane@fandza.co.mz");
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())

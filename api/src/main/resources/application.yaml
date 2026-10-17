@@ -20,6 +20,14 @@ spring:
 server:
   port: 8080
 
+fandza:
+  security:
+    jwt:
+      secret: ${FANDZA_JWT_SECRET:Ku9tis3fKJYHIddchUqvU8XA6fOVio6lfW3T+BT7nv7yFQHfr0ay5a6AewGy7tSQ}
+      expiration: 8h
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
+
 ---
 spring:
   config:
