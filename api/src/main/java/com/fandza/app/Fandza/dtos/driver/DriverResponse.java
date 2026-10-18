@@ -3,9 +3,10 @@ package com.fandza.app.Fandza.dtos.driver;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fandza.app.Fandza.enums.AccountStatus;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 public record DriverResponse(
-        Long id,
+        UUID id,
         String fullName,
         String email,
         String phoneNumber,

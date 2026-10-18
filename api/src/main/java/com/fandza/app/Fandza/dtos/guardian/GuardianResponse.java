@@ -2,9 +2,10 @@ package com.fandza.app.Fandza.dtos.guardian;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 public record GuardianResponse(
-        Long id,
+        UUID id,
         String fullName,
         String email,
         String phoneNumber,

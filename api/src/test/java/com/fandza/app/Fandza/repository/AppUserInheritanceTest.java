@@ -8,6 +8,7 @@ import com.fandza.app.Fandza.entity.LegalGuardian;
 import com.fandza.app.Fandza.enums.AccountStatus;
 import com.fandza.app.Fandza.enums.UserType;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +39,7 @@ class AppUserInheritanceTest {
         driver.setPhoneNumber("+258841111111");
         driver.setLicenseNumber("L-99");
 
-        Long id = entityManager.persist(driver).getId();
+        UUID id = entityManager.persist(driver).getId();
         entityManager.flush();
         entityManager.clear();
 
@@ -58,7 +59,7 @@ class AppUserInheritanceTest {
         LegalGuardian guardian = new LegalGuardian("Bento", "bento@fandza.co.mz", "encoded-hash");
         guardian.setPhoneNumber("+258842222222");
 
-        Long id = entityManager.persist(guardian).getId();
+        UUID id = entityManager.persist(guardian).getId();
         entityManager.flush();
         entityManager.clear();
 

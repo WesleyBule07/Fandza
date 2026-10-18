@@ -5,6 +5,7 @@ import com.fandza.app.Fandza.dtos.driver.DriverResponse;
 import com.fandza.app.Fandza.dtos.driver.DriverStatusRequest;
 import com.fandza.app.Fandza.service.DriverService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,7 +35,7 @@ public class DriverController {
     }
 
     @GetMapping("/{id}")
-    public DriverResponse getById(@PathVariable Long id) {
+    public DriverResponse getById(@PathVariable UUID id) {
         return driverService.getById(id);
     }
 
@@ -44,7 +45,7 @@ public class DriverController {
     }
 
     @PatchMapping("/{id}/status")
-    public DriverResponse updateStatus(@PathVariable Long id, @Valid @RequestBody DriverStatusRequest request) {
+    public DriverResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody DriverStatusRequest request) {
         return driverService.updateStatus(id, request.status());
     }
 }

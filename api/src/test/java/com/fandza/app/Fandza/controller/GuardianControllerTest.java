@@ -31,6 +31,8 @@ class GuardianControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    private static final String MISSING_ID = "00000000-0000-0000-0000-000000000000";
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -59,14 +61,14 @@ class GuardianControllerTest {
         return new GuardianRequest("Maria Sitoe", email, "secret123", "+258840000000");
     }
 
-    private Long createGuardianAndGetId(String email) throws Exception {
+    private String createGuardianAndGetId(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/guardians")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest(email))))
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return body.get("id").asLong();
+        return body.get("id").asText();
     }
 
     private String loginAndGetToken(String email) throws Exception {
@@ -139,7 +141,7 @@ class GuardianControllerTest {
 
     @Test
     void getByIdShouldRequireAuthenticationAndReturn200Or404() throws Exception {
-        Long id = createGuardianAndGetId("maria@fandza.co.mz");
+        String id = createGuardianAndGetId("maria@fandza.co.mz");
         String token = loginAndGetToken("maria@fandza.co.mz");
 
         mockMvc.perform(get("/api/v1/guardians/{id}", id))
@@ -151,7 +153,7 @@ class GuardianControllerTest {
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
-        mockMvc.perform(get("/api/v1/guardians/{id}", 9999L)
+        mockMvc.perform(get("/api/v1/guardians/{id}", MISSING_ID)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));

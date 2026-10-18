@@ -8,6 +8,7 @@ import com.fandza.app.Fandza.exception.GuardianNotFoundException;
 import com.fandza.app.Fandza.mapper.GuardianMapper;
 import com.fandza.app.Fandza.repository.AppUserRepository;
 import com.fandza.app.Fandza.repository.LegalGuardianRepository;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,7 +41,7 @@ public class GuardianService {
     }
 
     @Transactional(readOnly = true)
-    public GuardianResponse getById(Long id) {
+    public GuardianResponse getById(UUID id) {
         return guardianMapper.toResponse(findOrThrow(id));
     }
 
@@ -49,7 +50,7 @@ public class GuardianService {
         return legalGuardianRepository.findAll(pageable).map(guardianMapper::toResponse);
     }
 
-    private LegalGuardian findOrThrow(Long id) {
+    private LegalGuardian findOrThrow(UUID id) {
         return legalGuardianRepository.findById(id).orElseThrow(() -> new GuardianNotFoundException(id));
     }
 }

@@ -20,6 +20,7 @@ import com.fandza.app.Fandza.repository.DriverRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class DriverServiceTest {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
+    private static final UUID DRIVER_ID = UUID.randomUUID();
+    private static final UUID MISSING_ID = UUID.randomUUID();
 
     @Mock
     private DriverRepository driverRepository;
@@ -90,18 +93,18 @@ class DriverServiceTest {
 
     @Test
     void getByIdShouldThrowWhenDriverIsMissing() {
-        when(driverRepository.findById(42L)).thenReturn(Optional.empty());
+        when(driverRepository.findById(MISSING_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> driverService.getById(42L))
+        assertThatThrownBy(() -> driverService.getById(MISSING_ID))
                 .isInstanceOf(DriverNotFoundException.class);
     }
 
     @Test
     void updateStatusShouldActivatePendingDriver() {
         Driver driver = new Driver("Jane Doe", "jane@fandza.co.mz", "hash");
-        when(driverRepository.findById(1L)).thenReturn(Optional.of(driver));
+        when(driverRepository.findById(DRIVER_ID)).thenReturn(Optional.of(driver));
 
-        DriverResponse response = driverService.updateStatus(1L, AccountStatus.ACTIVE);
+        DriverResponse response = driverService.updateStatus(DRIVER_ID, AccountStatus.ACTIVE);
 
         assertThat(driver.getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
         assertThat(response.accountStatus()).isEqualTo(AccountStatus.ACTIVE);
@@ -111,9 +114,9 @@ class DriverServiceTest {
     void updateStatusShouldRejectInvalidTransition() {
         Driver driver = new Driver("Jane Doe", "jane@fandza.co.mz", "hash");
         driver.setAccountStatus(AccountStatus.ACTIVE);
-        when(driverRepository.findById(1L)).thenReturn(Optional.of(driver));
+        when(driverRepository.findById(DRIVER_ID)).thenReturn(Optional.of(driver));
 
-        assertThatThrownBy(() -> driverService.updateStatus(1L, AccountStatus.PENDING))
+        assertThatThrownBy(() -> driverService.updateStatus(DRIVER_ID, AccountStatus.PENDING))
                 .isInstanceOf(InvalidStatusTransitionException.class);
 
         assertThat(driver.getAccountStatus()).isEqualTo(AccountStatus.ACTIVE);
@@ -123,9 +126,9 @@ class DriverServiceTest {
     @Test
     void updateStatusShouldRejectTransitionToSameStatus() {
         Driver driver = new Driver("Jane Doe", "jane@fandza.co.mz", "hash");
-        when(driverRepository.findById(1L)).thenReturn(Optional.of(driver));
+        when(driverRepository.findById(DRIVER_ID)).thenReturn(Optional.of(driver));
 
-        assertThatThrownBy(() -> driverService.updateStatus(1L, AccountStatus.PENDING))
+        assertThatThrownBy(() -> driverService.updateStatus(DRIVER_ID, AccountStatus.PENDING))
                 .isInstanceOf(InvalidStatusTransitionException.class);
     }
 }

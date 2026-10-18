@@ -10,6 +10,7 @@ import com.fandza.app.Fandza.exception.InvalidStatusTransitionException;
 import com.fandza.app.Fandza.mapper.DriverMapper;
 import com.fandza.app.Fandza.repository.AppUserRepository;
 import com.fandza.app.Fandza.repository.DriverRepository;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -42,7 +43,7 @@ public class DriverService {
     }
 
     @Transactional(readOnly = true)
-    public DriverResponse getById(Long id) {
+    public DriverResponse getById(UUID id) {
         return driverMapper.toResponse(findOrThrow(id));
     }
 
@@ -51,7 +52,7 @@ public class DriverService {
         return driverRepository.findAll(pageable).map(driverMapper::toResponse);
     }
 
-    public DriverResponse updateStatus(Long id, AccountStatus targetStatus) {
+    public DriverResponse updateStatus(UUID id, AccountStatus targetStatus) {
         Driver driver = findOrThrow(id);
         AccountStatus current = driver.getAccountStatus();
         if (current == targetStatus || !isAllowedTransition(current, targetStatus)) {
@@ -69,7 +70,7 @@ public class DriverService {
         };
     }
 
-    private Driver findOrThrow(Long id) {
+    private Driver findOrThrow(UUID id) {
         return driverRepository.findById(id).orElseThrow(() -> new DriverNotFoundException(id));
     }
 }

@@ -16,6 +16,7 @@ import com.fandza.app.Fandza.mapper.GuardianMapper;
 import com.fandza.app.Fandza.repository.AppUserRepository;
 import com.fandza.app.Fandza.repository.LegalGuardianRepository;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class GuardianServiceTest {
+
+    private static final UUID MISSING_ID = UUID.randomUUID();
 
     @Mock
     private LegalGuardianRepository legalGuardianRepository;
@@ -79,9 +82,9 @@ class GuardianServiceTest {
 
     @Test
     void getByIdShouldThrowWhenGuardianIsMissing() {
-        when(legalGuardianRepository.findById(42L)).thenReturn(Optional.empty());
+        when(legalGuardianRepository.findById(MISSING_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> guardianService.getById(42L))
+        assertThatThrownBy(() -> guardianService.getById(MISSING_ID))
                 .isInstanceOf(GuardianNotFoundException.class);
     }
 }

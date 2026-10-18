@@ -4,6 +4,7 @@ import com.fandza.app.Fandza.dtos.guardian.GuardianRequest;
 import com.fandza.app.Fandza.dtos.guardian.GuardianResponse;
 import com.fandza.app.Fandza.service.GuardianService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -32,7 +33,7 @@ public class GuardianController {
     }
 
     @GetMapping("/{id}")
-    public GuardianResponse getById(@PathVariable Long id) {
+    public GuardianResponse getById(@PathVariable UUID id) {
         return guardianService.getById(id);
     }
 

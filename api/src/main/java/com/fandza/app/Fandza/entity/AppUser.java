@@ -15,6 +15,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 
 @Entity
 @Table(name = "app_user")
@@ -24,8 +25,8 @@ public abstract class AppUser {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -61,7 +62,7 @@ public abstract class AppUser {
         }
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 

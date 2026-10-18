@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.MvcResult;
 class DriverControllerTest {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
+    private static final String MISSING_ID = "00000000-0000-0000-0000-000000000000";
 
     @Autowired
     private MockMvc mockMvc;
@@ -72,14 +73,14 @@ class DriverControllerTest {
                 OffsetDateTime.now(BUSINESS_ZONE).plusYears(1));
     }
 
-    private Long createDriverAndGetId(String email) throws Exception {
+    private String createDriverAndGetId(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/drivers")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest(email))))
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return body.get("id").asLong();
+        return body.get("id").asText();
     }
 
     private String loginAndGetToken(String email) throws Exception {
@@ -136,7 +137,7 @@ class DriverControllerTest {
 
     @Test
     void getByIdShouldReturn200Or404() throws Exception {
-        Long id = createDriverAndGetId("jane@fandza.co.mz");
+        String id = createDriverAndGetId("jane@fandza.co.mz");
         String token = loginAndGetToken("jane@fandza.co.mz");
 
         mockMvc.perform(get("/api/v1/drivers/{id}", id)
@@ -145,10 +146,15 @@ class DriverControllerTest {
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
-        mockMvc.perform(get("/api/v1/drivers/{id}", 9999L)
+        mockMvc.perform(get("/api/v1/drivers/{id}", MISSING_ID)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
+
+        mockMvc.perform(get("/api/v1/drivers/{id}", "9999")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test
@@ -166,7 +172,7 @@ class DriverControllerTest {
 
     @Test
     void updateStatusShouldActivateDriverAndRejectInvalidTransition() throws Exception {
-        Long id = createDriverAndGetId("jane@fandza.co.mz");
+        String id = createDriverAndGetId("jane@fandza.co.mz");
         String token = loginAndGetToken("jane@fandza.co.mz");
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
@@ -186,7 +192,7 @@ class DriverControllerTest {
 
     @Test
     void updateStatusShouldReturn400WhenStatusIsNull() throws Exception {
-        Long id = createDriverAndGetId("jane@fandza.co.mz");
+        String id = createDriverAndGetId("jane@fandza.co.mz");
         String token = loginAndGetToken("jane@fandza.co.mz");
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
