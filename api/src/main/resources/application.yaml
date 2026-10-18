@@ -27,6 +27,10 @@ fandza:
       expiration: 8h
   cors:
     allowed-origins: http://localhost:5173,http://localhost:3000
+  admin:
+    email: ${FANDZA_ADMIN_EMAIL:}
+    password: ${FANDZA_ADMIN_PASSWORD:}
+    full-name: ${FANDZA_ADMIN_FULL_NAME:Administrator}
 
 springdoc:
   api-docs:

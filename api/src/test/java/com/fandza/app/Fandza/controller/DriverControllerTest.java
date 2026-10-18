@@ -12,8 +12,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.fandza.app.Fandza.dtos.auth.LoginRequest;
 import com.fandza.app.Fandza.dtos.driver.DriverRequest;
+import com.fandza.app.Fandza.entity.Admin;
 import com.fandza.app.Fandza.entity.Driver;
 import com.fandza.app.Fandza.enums.AccountStatus;
+import com.fandza.app.Fandza.repository.AdminRepository;
 import com.fandza.app.Fandza.repository.AppUserRepository;
 import com.fandza.app.Fandza.repository.DriverRepository;
 import java.time.OffsetDateTime;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -46,7 +49,13 @@ class DriverControllerTest {
     private DriverRepository driverRepository;
 
     @Autowired
+    private AdminRepository adminRepository;
+
+    @Autowired
     private AppUserRepository appUserRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanDatabase() {
@@ -59,6 +68,7 @@ class DriverControllerTest {
     }
 
     private void cleanTables() {
+        adminRepository.deleteAll();
         driverRepository.deleteAll();
         appUserRepository.deleteAll();
     }
@@ -91,6 +101,11 @@ class DriverControllerTest {
                 .andReturn();
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
         return body.get("token").asText();
+    }
+
+    private String createAdminAndGetToken(String email) throws Exception {
+        adminRepository.save(new Admin("Administrator", email, passwordEncoder.encode("secret123")));
+        return loginAndGetToken(email);
     }
 
     @Test
@@ -173,7 +188,7 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldActivateDriverAndRejectInvalidTransition() throws Exception {
         String id = createDriverAndGetId("jane@fandza.co.mz");
-        String token = loginAndGetToken("jane@fandza.co.mz");
+        String token = createAdminAndGetToken("admin@fandza.co.mz");
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
                         .header("Authorization", "Bearer " + token)
@@ -193,7 +208,7 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldReturn400WhenStatusIsNull() throws Exception {
         String id = createDriverAndGetId("jane@fandza.co.mz");
-        String token = loginAndGetToken("jane@fandza.co.mz");
+        String token = createAdminAndGetToken("admin@fandza.co.mz");
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
                         .header("Authorization", "Bearer " + token)
@@ -201,5 +216,18 @@ class DriverControllerTest {
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.status").value(notNullValue()));
+    }
+
+    @Test
+    void updateStatusShouldReturn403WhenRequesterIsNotAdmin() throws Exception {
+        String id = createDriverAndGetId("jane@fandza.co.mz");
+        String driverToken = loginAndGetToken("jane@fandza.co.mz");
+
+        mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
+                        .header("Authorization", "Bearer " + driverToken)
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403));
     }
 }

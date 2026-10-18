@@ -2,6 +2,7 @@ package com.fandza.app.Fandza.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fandza.app.Fandza.entity.Admin;
 import com.fandza.app.Fandza.entity.AppUser;
 import com.fandza.app.Fandza.entity.Driver;
 import com.fandza.app.Fandza.entity.LegalGuardian;
@@ -70,5 +71,19 @@ class AppUserInheritanceTest {
         assertThat(loaded.getId()).isEqualTo(id);
         assertThat(loaded).isInstanceOf(LegalGuardian.class);
         assertThat(loaded.getUserType()).isEqualTo(UserType.LEGAL_GUARDIAN);
+    }
+
+    @Test
+    void adminShouldPersistThroughJoinedInheritance() {
+        Admin admin = new Admin("Root Admin", "admin@fandza.co.mz", "encoded-hash");
+
+        UUID id = entityManager.persist(admin).getId();
+        entityManager.flush();
+        entityManager.clear();
+
+        AppUser loaded = appUserRepository.findById(id).orElseThrow();
+        assertThat(loaded).isInstanceOf(Admin.class);
+        assertThat(loaded.getUserType()).isEqualTo(UserType.ADMIN);
+        assertThat(loaded.getCreatedAt()).isNotNull();
     }
 }

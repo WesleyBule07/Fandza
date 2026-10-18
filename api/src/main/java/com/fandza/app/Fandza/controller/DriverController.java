@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,11 +63,14 @@ public class DriverController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Update a driver account status",
-            description = "Applies a validated status transition (PENDING/ACTIVE/SUSPENDED).",
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Approve or update a driver account status",
+            description = "Restricted to administrators. Applies a validated status transition "
+                    + "(PENDING/ACTIVE/SUSPENDED).",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponse(responseCode = "200", description = "Status updated")
     @ApiResponse(responseCode = "401", description = "Missing or invalid token")
+    @ApiResponse(responseCode = "403", description = "Authenticated user is not an administrator")
     @ApiResponse(responseCode = "404", description = "Driver not found")
     @ApiResponse(responseCode = "422", description = "Invalid status transition")
     public DriverResponse updateStatus(@PathVariable UUID id, @Valid @RequestBody DriverStatusRequest request) {
