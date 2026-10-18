@@ -28,6 +28,14 @@ fandza:
   cors:
     allowed-origins: http://localhost:5173,http://localhost:3000
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
 ---
 spring:
   config:

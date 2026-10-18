@@ -7,6 +7,10 @@ import com.fandza.app.Fandza.entity.AppUser;
 import com.fandza.app.Fandza.exception.InvalidCredentialsException;
 import com.fandza.app.Fandza.repository.AppUserRepository;
 import com.fandza.app.Fandza.security.JwtService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Login and current-user endpoints based on JWT")
 public class AuthController {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
@@ -40,6 +45,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Authenticate a user",
+            description = "Validates credentials and returns a signed JWT access token.")
+    @ApiResponse(responseCode = "200", description = "Authenticated; bearer token issued")
+    @ApiResponse(responseCode = "400", description = "Invalid payload")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         try {
             authenticationManager.authenticate(
@@ -55,6 +65,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @Operation(summary = "Get the authenticated user", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponse(responseCode = "200", description = "Current user")
+    @ApiResponse(responseCode = "401", description = "Missing or invalid token")
     public MeResponse me() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         AppUser user = appUserRepository.findByEmail(email)
