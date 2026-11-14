@@ -3,8 +3,8 @@ spring:
     name: Fandza
   datasource:
     url: jdbc:postgresql://localhost:5432/fandza
-    username: fandza
-    password: fandza
+    username: postgres
+    password: 070239
   jpa:
     hibernate:
       ddl-auto: validate
@@ -39,17 +39,3 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
-
----
-spring:
-  config:
-    activate:
-      on-profile: test
-  datasource:
-    url: jdbc:h2:mem:fandza;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
-  jpa:
-    hibernate:
-      ddl-auto: validate
