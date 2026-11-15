@@ -84,6 +84,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(InvalidProfileChangeException.class)
+    public ResponseEntity<ErrorResponse> handleProfileChange(
+            InvalidProfileChangeException ex, HttpServletRequest request) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(InvalidStatusTransitionException.class)
     public ResponseEntity<ErrorResponse> handleInvalidTransition(
             InvalidStatusTransitionException ex, HttpServletRequest request) {
