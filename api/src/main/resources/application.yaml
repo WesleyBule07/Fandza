@@ -2,9 +2,9 @@ spring:
   application:
     name: Fandza
   datasource:
-    url: jdbc:postgresql://localhost:5432/fandza
-    username: postgres
-    password: 070239
+    url: ${FANDZA_DB_URL:jdbc:postgresql://localhost:5432/fandza}
+    username: ${FANDZA_DB_USER:fandza}
+    password: ${FANDZA_DB_PASSWORD:fandza}
   jpa:
     hibernate:
       ddl-auto: validate
