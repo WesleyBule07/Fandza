@@ -8,7 +8,7 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.fandza.app</groupId>
+	<groupId>com.fandza.ccs</groupId>
 	<artifactId>Fandza</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Fandza API</name>
