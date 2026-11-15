@@ -77,56 +77,13 @@ class DriverControllerTest {
     }
 
     private String createDriverAndGetId(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/drivers")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest(email))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return body.get("id").asText();
+        Driver driver = new Driver("Jane Doe", ContactType.EMAIL, email);
+        driver.setLicenseNumber("L-123");
+        driverRepository.save(driver);
+        return driver.getId().toString();
     }
 
 
-
-    @Test
-    void createShouldReturn201WithPendingStatusAndHidePassword() throws Exception {
-        mockMvc.perform(post("/api/v1/drivers")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("jane@fandza.co.mz"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(notNullValue()))
-                .andExpect(jsonPath("$.fullName").value("Jane Doe"))
-                .andExpect(jsonPath("$.contactValue").value("jane@fandza.co.mz"))
-                .andExpect(jsonPath("$.accountStatus").value("PENDING"))
-                .andExpect(jsonPath("$.createdAt").value(notNullValue()))
-                .andExpect(jsonPath("$.password").doesNotExist());
-    }
-
-    @Test
-    void createShouldReturn409WhenEmailAlreadyExists() throws Exception {
-        mockMvc.perform(post("/api/v1/drivers")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("jane@fandza.co.mz"))))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/api/v1/drivers")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("jane@fandza.co.mz"))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409));
-    }
-
-    @Test
-    void createShouldReturn400WithFieldErrorsWhenRequestIsInvalid() throws Exception {
-        DriverRequest invalid = new DriverRequest(
-                "", ContactType.EMAIL, "", "L-123", null);
-
-        mockMvc.perform(post("/api/v1/drivers")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.fullName").value(notNullValue()));
-    }
 
     @Test
     void getByIdShouldReturn200Or404() throws Exception {

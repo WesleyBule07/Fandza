@@ -16,23 +16,23 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByKeycloakId(UUID keycloakId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "UPDATE app_user SET user_type = :newType WHERE id = :id", nativeQuery = true)
     int updateUserType(@Param("id") UUID id, @Param("newType") String newType);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM legal_guardian WHERE id = :id", nativeQuery = true)
     int deleteGuardianRow(@Param("id") UUID id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM driver WHERE id = :id", nativeQuery = true)
     int deleteDriverRow(@Param("id") UUID id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "INSERT INTO legal_guardian (id) VALUES (:id)", nativeQuery = true)
     int insertGuardianRow(@Param("id") UUID id);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "INSERT INTO driver (id) VALUES (:id)", nativeQuery = true)
     int insertDriverRow(@Param("id") UUID id);
 }

@@ -1,6 +1,5 @@
 package com.fandza.ccs.Fandza.controller;
 
-import com.fandza.ccs.Fandza.dtos.guardian.GuardianRequest;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianResponse;
 import com.fandza.ccs.Fandza.service.GuardianService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,11 +10,8 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,17 +25,6 @@ public class GuardianController {
 
     public GuardianController(GuardianService guardianService) {
         this.guardianService = guardianService;
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Register a legal guardian",
-            description = "Public onboarding endpoint for parents or tutors.")
-    @ApiResponse(responseCode = "201", description = "Legal guardian created")
-    @ApiResponse(responseCode = "400", description = "Invalid payload")
-    @ApiResponse(responseCode = "409", description = "Email already in use")
-    public GuardianResponse create(@Valid @RequestBody GuardianRequest request) {
-        return guardianService.create(request);
     }
 
     @GetMapping("/{id}")

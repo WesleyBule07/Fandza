@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import com.fandza.ccs.Fandza.entity.LegalGuardian;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianRequest;
 import com.fandza.ccs.Fandza.enums.ContactType;
 import com.fandza.ccs.Fandza.repository.LegalGuardianRepository;
@@ -68,72 +69,11 @@ class GuardianControllerTest {
     }
 
     private String createGuardianAndGetId(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/guardians")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest(email))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return body.get("id").asText();
+        LegalGuardian guardian = new LegalGuardian("Maria Sitoe", ContactType.EMAIL, email);
+        legalGuardianRepository.save(guardian);
+        return guardian.getId().toString();
     }
 
-
-    @Test
-    void createShouldReturn201WithoutPassword() throws Exception {
-        mockMvc.perform(post("/api/v1/guardians")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("maria@fandza.co.mz"))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(notNullValue()))
-                .andExpect(jsonPath("$.fullName").value("Maria Sitoe"))
-                .andExpect(jsonPath("$.contactValue").value("+258840000000"))
-                .andExpect(jsonPath("$.contactValue").value("+258840000000"))
-                .andExpect(jsonPath("$.createdAt").value(notNullValue()))
-                .andExpect(jsonPath("$.password").doesNotExist())
-                .andExpect(jsonPath("$.userType").doesNotExist());
-    }
-
-    @Test
-    void createShouldReturn409WhenEmailAlreadyExists() throws Exception {
-        mockMvc.perform(post("/api/v1/guardians")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("maria@fandza.co.mz"))))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/api/v1/guardians")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("maria@fandza.co.mz"))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409));
-    }
-
-    @Test
-    void createShouldReturn400WithFieldErrorsWhenRequestIsInvalid() throws Exception {
-        GuardianRequest invalid = new GuardianRequest("", ContactType.PHONE, "");
-
-        mockMvc.perform(post("/api/v1/guardians")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.fullName").value(notNullValue()))
-                .andExpect(jsonPath("$.fieldErrors.contactValue").value(notNullValue()));
-    }
-
-    @Test
-    void createShouldReturn409WhenEmailBelongsToDriver() throws Exception {
-        mockMvc.perform(post("/api/v1/drivers")
-                        .contentType(APPLICATION_JSON)
-                        .content("{\"fullName\":\"Jane Doe\",\"contactType\":\"EMAIL\","
-                                + "\"contactValue\":\"shared@fandza.co.mz\",\"licenseNumber\":\"L-1\","
-                                + "\"licenseExpiry\":\"2030-12-31T00:00:00Z\"}"))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/api/v1/guardians")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new GuardianRequest("Maria Sitoe", ContactType.EMAIL, "shared@fandza.co.mz"))))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409));
-    }
 
     @Test
     void getByIdShouldRequireAuthenticationAndReturn200Or404() throws Exception {
