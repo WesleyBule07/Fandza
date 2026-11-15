@@ -1,10 +1,13 @@
 package com.fandza.app.Fandza;
 
+import com.fandza.app.Fandza.TestcontainersConfiguration;
+import org.springframework.context.annotation.Import;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 class FandzaApplicationTests {
 

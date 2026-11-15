@@ -1,5 +1,7 @@
 package com.fandza.app.Fandza.controller;
 
+import com.fandza.app.Fandza.TestcontainersConfiguration;
+import org.springframework.context.annotation.Import;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,6 +29,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
+@Import(TestcontainersConfiguration.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthControllerTest {

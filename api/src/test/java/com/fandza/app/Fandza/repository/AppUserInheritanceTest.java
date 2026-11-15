@@ -1,5 +1,7 @@
 package com.fandza.app.Fandza.repository;
 
+import com.fandza.app.Fandza.TestcontainersConfiguration;
+import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fandza.app.Fandza.entity.Admin;
@@ -19,6 +21,7 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
+@Import(TestcontainersConfiguration.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 class AppUserInheritanceTest {
