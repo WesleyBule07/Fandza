@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/webjars/swagger-ui/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/contact-verifications/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/drivers").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/guardians").permitAll()
                         .anyRequest().authenticated())

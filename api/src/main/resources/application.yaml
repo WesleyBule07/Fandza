@@ -26,6 +26,13 @@ server:
   port: 8080
 
 fandza:
+  verification:
+    secret: ${FANDZA_VERIFICATION_SECRET:fandza-local-verification-secret}
+    code-length: 4
+    code-ttl-seconds: 600
+    max-attempts: 5
+    resend-interval-seconds: 60
+    max-sends-per-hour: 5
   cors:
     allowed-origins: http://localhost:5173,http://localhost:3000
   admin:
