@@ -4,14 +4,16 @@ import com.fandza.ccs.Fandza.TestcontainersConfiguration;
 import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fandza.ccs.Fandza.entity.Admin;
-import com.fandza.ccs.Fandza.entity.AppUser;
 import com.fandza.ccs.Fandza.entity.Driver;
 import com.fandza.ccs.Fandza.entity.LegalGuardian;
+import com.fandza.ccs.Fandza.entity.User;
 import com.fandza.ccs.Fandza.enums.AccountStatus;
+import com.fandza.ccs.Fandza.enums.ContactType;
 import com.fandza.ccs.Fandza.enums.UserType;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,34 +26,38 @@ import org.springframework.test.context.ActiveProfiles;
 @Import(TestcontainersConfiguration.class)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-class AppUserInheritanceTest {
+class UserInheritanceTest {
 
     @Autowired
     private TestEntityManager entityManager;
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private UserRepository userRepository;
+
+    private static final Pattern UUID_V7 = Pattern.compile(
+            "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
 
     @BeforeEach
     void cleanDatabase() {
-        appUserRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     @Test
     void driverShouldPersistThroughJoinedInheritance() {
-        Driver driver = new Driver("Ana Bila", "ana@fandza.co.mz", "encoded-hash");
-        driver.setPhoneNumber("+258841111111");
+        Driver driver = new Driver("Ana Bila", ContactType.PHONE, "+258840000001");
         driver.setLicenseNumber("L-99");
 
         UUID id = entityManager.persist(driver).getId();
         entityManager.flush();
         entityManager.clear();
 
-        AppUser loaded = appUserRepository.findById(id).orElseThrow();
+        User loaded = userRepository.findById(id).orElseThrow();
         assertThat(loaded).isInstanceOf(Driver.class);
         assertThat(loaded.getUserType()).isEqualTo(UserType.DRIVER);
-        assertThat(loaded.getEmail()).isEqualTo("ana@fandza.co.mz");
+        assertThat(loaded.getContactValue()).isEqualTo("+258840000001");
         assertThat(loaded.getCreatedAt()).isNotNull();
+        assertThat(loaded.getUpdatedAt()).isNotNull();
+        assertThat(UUID_V7.matcher(id.toString()).matches()).isTrue();
 
         Driver loadedDriver = (Driver) loaded;
         assertThat(loadedDriver.getAccountStatus()).isEqualTo(AccountStatus.PENDING);
@@ -60,33 +66,32 @@ class AppUserInheritanceTest {
 
     @Test
     void legalGuardianShouldPersistThroughJoinedInheritance() {
-        LegalGuardian guardian = new LegalGuardian("Bento", "bento@fandza.co.mz", "encoded-hash");
-        guardian.setPhoneNumber("+258842222222");
+        LegalGuardian guardian = new LegalGuardian("Bento", ContactType.EMAIL, "bento@fandza.co.mz");
 
         UUID id = entityManager.persist(guardian).getId();
         entityManager.flush();
         entityManager.clear();
 
-        List<AppUser> users = appUserRepository.findAll();
+        List<User> users = userRepository.findAll();
         assertThat(users).hasSize(1);
 
-        AppUser loaded = users.get(0);
+        User loaded = users.get(0);
         assertThat(loaded.getId()).isEqualTo(id);
         assertThat(loaded).isInstanceOf(LegalGuardian.class);
         assertThat(loaded.getUserType()).isEqualTo(UserType.LEGAL_GUARDIAN);
+        assertThat(loaded.getCreatedAt()).isInstanceOf(Instant.class);
     }
 
     @Test
-    void adminShouldPersistThroughJoinedInheritance() {
-        Admin admin = new Admin("Root Admin", "admin@fandza.co.mz", "encoded-hash");
-
-        UUID id = entityManager.persist(admin).getId();
+    void userRepositoryShouldFindAndCheckUniquenessByContact() {
+        LegalGuardian guardian = new LegalGuardian("Bento", ContactType.EMAIL, "bento@fandza.co.mz");
+        UUID id = entityManager.persist(guardian).getId();
         entityManager.flush();
         entityManager.clear();
 
-        AppUser loaded = appUserRepository.findById(id).orElseThrow();
-        assertThat(loaded).isInstanceOf(Admin.class);
-        assertThat(loaded.getUserType()).isEqualTo(UserType.ADMIN);
-        assertThat(loaded.getCreatedAt()).isNotNull();
+        assertThat(userRepository.existsByContactValue("bento@fandza.co.mz")).isTrue();
+        assertThat(userRepository.existsByContactValue("other@fandza.co.mz")).isFalse();
+        assertThat(userRepository.findByContactValue("bento@fandza.co.mz")).hasValueSatisfying(
+                user -> assertThat(user.getId()).isEqualTo(id));
     }
 }

@@ -1,45 +1,27 @@
 package com.fandza.ccs.Fandza.entity;
 
-import com.fandza.ccs.Fandza.enums.AccountStatus;
+import com.fandza.ccs.Fandza.enums.ContactType;
 import com.fandza.ccs.Fandza.enums.UserType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "driver")
-public class Driver extends AppUser {
-
-    @Column(name = "phone_number", length = 30)
-    private String phoneNumber;
+public class Driver extends User {
 
     @Column(name = "license_number", length = 100)
     private String licenseNumber;
 
     @Column(name = "license_expiry")
-    private OffsetDateTime licenseExpiry;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "account_status", nullable = false)
-    private AccountStatus accountStatus;
+    private Instant licenseExpiry;
 
     protected Driver() {
     }
 
-    public Driver(String fullName, String email, String password) {
-        super(fullName, email, password, UserType.DRIVER);
-        this.accountStatus = AccountStatus.PENDING;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
+    public Driver(String fullName, ContactType contactType, String contactValue) {
+        super(fullName, contactType, contactValue, UserType.DRIVER);
     }
 
     public String getLicenseNumber() {
@@ -50,19 +32,11 @@ public class Driver extends AppUser {
         this.licenseNumber = licenseNumber;
     }
 
-    public OffsetDateTime getLicenseExpiry() {
+    public Instant getLicenseExpiry() {
         return licenseExpiry;
     }
 
-    public void setLicenseExpiry(OffsetDateTime licenseExpiry) {
+    public void setLicenseExpiry(Instant licenseExpiry) {
         this.licenseExpiry = licenseExpiry;
-    }
-
-    public AccountStatus getAccountStatus() {
-        return accountStatus;
-    }
-
-    public void setAccountStatus(AccountStatus accountStatus) {
-        this.accountStatus = accountStatus;
     }
 }

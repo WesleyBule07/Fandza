@@ -5,10 +5,11 @@ import com.fandza.ccs.Fandza.dtos.driver.DriverResponse;
 import com.fandza.ccs.Fandza.entity.Driver;
 import com.fandza.ccs.Fandza.enums.AccountStatus;
 import com.fandza.ccs.Fandza.exception.DriverNotFoundException;
-import com.fandza.ccs.Fandza.exception.EmailAlreadyExistsException;
+import com.fandza.ccs.Fandza.exception.ContactAlreadyExistsException;
 import com.fandza.ccs.Fandza.exception.InvalidStatusTransitionException;
 import com.fandza.ccs.Fandza.mapper.DriverMapper;
-import com.fandza.ccs.Fandza.repository.AppUserRepository;
+import com.fandza.ccs.Fandza.repository.UserRepository;
+import com.fandza.ccs.Fandza.util.ContactNormalizer;
 import com.fandza.ccs.Fandza.repository.DriverRepository;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -21,21 +22,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class DriverService {
 
     private final DriverRepository driverRepository;
-    private final AppUserRepository appUserRepository;
+    private final UserRepository userRepository;
     private final DriverMapper driverMapper;
 
     public DriverService(
             DriverRepository driverRepository,
-            AppUserRepository appUserRepository,
+            UserRepository userRepository,
             DriverMapper driverMapper) {
         this.driverRepository = driverRepository;
-        this.appUserRepository = appUserRepository;
+        this.userRepository = userRepository;
         this.driverMapper = driverMapper;
     }
 
     public DriverResponse create(DriverRequest request) {
-        if (appUserRepository.existsByEmail(request.email())) {
-            throw new EmailAlreadyExistsException(request.email());
+        if (userRepository.existsByContactValue(ContactNormalizer.normalize(request.contactType(), request.contactValue()))) {
+            throw new ContactAlreadyExistsException(request.contactValue());
         }
         Driver driver = driverMapper.toEntity(request);
         Driver saved = driverRepository.save(driver);

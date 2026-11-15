@@ -11,14 +11,15 @@ import com.fandza.ccs.Fandza.dtos.driver.DriverRequest;
 import com.fandza.ccs.Fandza.dtos.driver.DriverResponse;
 import com.fandza.ccs.Fandza.entity.Driver;
 import com.fandza.ccs.Fandza.enums.AccountStatus;
+import com.fandza.ccs.Fandza.enums.ContactType;
+import com.fandza.ccs.Fandza.exception.ContactAlreadyExistsException;
 import com.fandza.ccs.Fandza.exception.DriverNotFoundException;
-import com.fandza.ccs.Fandza.exception.EmailAlreadyExistsException;
+import com.fandza.ccs.Fandza.exception.InvalidContactException;
 import com.fandza.ccs.Fandza.exception.InvalidStatusTransitionException;
 import com.fandza.ccs.Fandza.mapper.DriverMapper;
-import com.fandza.ccs.Fandza.repository.AppUserRepository;
 import com.fandza.ccs.Fandza.repository.DriverRepository;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import com.fandza.ccs.Fandza.repository.UserRepository;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,13 +28,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class DriverServiceTest {
 
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
     private static final UUID DRIVER_ID = UUID.randomUUID();
     private static final UUID MISSING_ID = UUID.randomUUID();
 
@@ -41,52 +39,57 @@ class DriverServiceTest {
     private DriverRepository driverRepository;
 
     @Mock
-    private AppUserRepository appUserRepository;
+    private UserRepository userRepository;
 
-    private PasswordEncoder passwordEncoder;
     private DriverService driverService;
 
     @BeforeEach
     void setUp() {
-        passwordEncoder = new BCryptPasswordEncoder();
-        driverService = new DriverService(driverRepository, appUserRepository,
-                new DriverMapper(passwordEncoder));
+        driverService = new DriverService(driverRepository, userRepository, new DriverMapper());
     }
 
-    private DriverRequest validRequest(String email) {
+    private DriverRequest validRequest(String contactValue) {
         return new DriverRequest(
                 "Jane Doe",
-                email,
-                "secret123",
-                "+258840000000",
+                ContactType.EMAIL,
+                contactValue,
                 "L-123",
-                OffsetDateTime.now(BUSINESS_ZONE).plusYears(1));
+                Instant.now().plusSeconds(60 * 60 * 24 * 365));
     }
 
     @Test
-    void createShouldStartDriverAsPendingWithEncodedPassword() {
-        when(appUserRepository.existsByEmail("jane@fandza.co.mz")).thenReturn(false);
+    void createShouldNormalizeContactAndStartAsPending() {
+        when(userRepository.existsByContactValue("jane@fandza.co.mz")).thenReturn(false);
         when(driverRepository.save(any(Driver.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        DriverResponse response = driverService.create(validRequest("jane@fandza.co.mz"));
+        DriverResponse response = driverService.create(validRequest("Jane@Fandza.co.mz"));
 
         ArgumentCaptor<Driver> captor = ArgumentCaptor.forClass(Driver.class);
         verify(driverRepository).save(captor.capture());
         Driver saved = captor.getValue();
         assertThat(saved.getAccountStatus()).isEqualTo(AccountStatus.PENDING);
-        assertThat(saved.getPassword()).isNotEqualTo("secret123");
-        assertThat(passwordEncoder.matches("secret123", saved.getPassword())).isTrue();
+        assertThat(saved.isContactVerified()).isFalse();
+        assertThat(saved.getContactValue()).isEqualTo("jane@fandza.co.mz");
         assertThat(response.accountStatus()).isEqualTo(AccountStatus.PENDING);
-        assertThat(response.email()).isEqualTo("jane@fandza.co.mz");
+        assertThat(response.contactValue()).isEqualTo("jane@fandza.co.mz");
         assertThat(response.id()).isNull();
     }
 
     @Test
-    void createShouldRejectDuplicateEmail() {
-        when(appUserRepository.existsByEmail("jane@fandza.co.mz")).thenReturn(true);
+    void createShouldRejectInvalidPhone() {
+        assertThatThrownBy(() -> driverService.create(
+                new DriverRequest("Jane", ContactType.PHONE, "12345", "L-123", null)))
+                .isInstanceOf(InvalidContactException.class);
+
+        verify(driverRepository, never()).save(any());
+    }
+
+    @Test
+    void createShouldRejectDuplicateContact() {
+        when(userRepository.existsByContactValue("jane@fandza.co.mz")).thenReturn(true);
 
         assertThatThrownBy(() -> driverService.create(validRequest("jane@fandza.co.mz")))
-                .isInstanceOf(EmailAlreadyExistsException.class);
+                .isInstanceOf(ContactAlreadyExistsException.class);
 
         verify(driverRepository, never()).save(any());
     }
@@ -101,7 +104,7 @@ class DriverServiceTest {
 
     @Test
     void updateStatusShouldActivatePendingDriver() {
-        Driver driver = new Driver("Jane Doe", "jane@fandza.co.mz", "hash");
+        Driver driver = new Driver("Jane Doe", ContactType.EMAIL, "jane@fandza.co.mz");
         when(driverRepository.findById(DRIVER_ID)).thenReturn(Optional.of(driver));
 
         DriverResponse response = driverService.updateStatus(DRIVER_ID, AccountStatus.ACTIVE);
@@ -112,7 +115,7 @@ class DriverServiceTest {
 
     @Test
     void updateStatusShouldRejectInvalidTransition() {
-        Driver driver = new Driver("Jane Doe", "jane@fandza.co.mz", "hash");
+        Driver driver = new Driver("Jane Doe", ContactType.EMAIL, "jane@fandza.co.mz");
         driver.setAccountStatus(AccountStatus.ACTIVE);
         when(driverRepository.findById(DRIVER_ID)).thenReturn(Optional.of(driver));
 
@@ -125,7 +128,7 @@ class DriverServiceTest {
 
     @Test
     void updateStatusShouldRejectTransitionToSameStatus() {
-        Driver driver = new Driver("Jane Doe", "jane@fandza.co.mz", "hash");
+        Driver driver = new Driver("Jane Doe", ContactType.EMAIL, "jane@fandza.co.mz");
         when(driverRepository.findById(DRIVER_ID)).thenReturn(Optional.of(driver));
 
         assertThatThrownBy(() -> driverService.updateStatus(DRIVER_ID, AccountStatus.PENDING))

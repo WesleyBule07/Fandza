@@ -1,8 +1,8 @@
 package com.fandza.ccs.Fandza.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -16,8 +16,6 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
@@ -55,10 +53,17 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleEmailConflict(
-            EmailAlreadyExistsException ex, HttpServletRequest request) {
+    @ExceptionHandler(ContactAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleContactConflict(
+            ContactAlreadyExistsException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(InvalidContactException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidContact(
+            InvalidContactException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request,
+                Map.of("contactValue", ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -74,9 +79,9 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> build(
-            HttpStatus status, String message, HttpServletRequest request, java.util.Map<String, String> fieldErrors) {
+            HttpStatus status, String message, HttpServletRequest request, Map<String, String> fieldErrors) {
         ErrorResponse body = new ErrorResponse(
-                OffsetDateTime.now(BUSINESS_ZONE),
+                Instant.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 message,

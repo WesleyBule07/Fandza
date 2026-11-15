@@ -16,11 +16,10 @@ import tools.jackson.databind.ObjectMapper;
 import com.fandza.ccs.Fandza.dtos.driver.DriverRequest;
 import com.fandza.ccs.Fandza.entity.Driver;
 import com.fandza.ccs.Fandza.enums.AccountStatus;
-import com.fandza.ccs.Fandza.repository.AdminRepository;
-import com.fandza.ccs.Fandza.repository.AppUserRepository;
+import com.fandza.ccs.Fandza.enums.ContactType;
+import com.fandza.ccs.Fandza.repository.UserRepository;
 import com.fandza.ccs.Fandza.repository.DriverRepository;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,8 +38,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 class DriverControllerTest {
 
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
-    private static final String MISSING_ID = "00000000-0000-0000-0000-000000000000";
+        private static final String MISSING_ID = "00000000-0000-0000-0000-000000000000";
 
     @Autowired
     private MockMvc mockMvc;
@@ -52,7 +50,7 @@ class DriverControllerTest {
     private DriverRepository driverRepository;
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private UserRepository userRepository;
 
     @BeforeEach
     void cleanDatabase() {
@@ -66,17 +64,16 @@ class DriverControllerTest {
 
     private void cleanTables() {
         driverRepository.deleteAll();
-        appUserRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     private DriverRequest validRequest(String email) {
         return new DriverRequest(
                 "Jane Doe",
+                ContactType.EMAIL,
                 email,
-                "secret123",
-                "+258840000000",
                 "L-123",
-                OffsetDateTime.now(BUSINESS_ZONE).plusYears(1));
+                Instant.now().plusSeconds(60 * 60 * 24 * 365));
     }
 
     private String createDriverAndGetId(String email) throws Exception {
@@ -99,7 +96,7 @@ class DriverControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(notNullValue()))
                 .andExpect(jsonPath("$.fullName").value("Jane Doe"))
-                .andExpect(jsonPath("$.email").value("jane@fandza.co.mz"))
+                .andExpect(jsonPath("$.contactValue").value("jane@fandza.co.mz"))
                 .andExpect(jsonPath("$.accountStatus").value("PENDING"))
                 .andExpect(jsonPath("$.createdAt").value(notNullValue()))
                 .andExpect(jsonPath("$.password").doesNotExist());
@@ -122,15 +119,13 @@ class DriverControllerTest {
     @Test
     void createShouldReturn400WithFieldErrorsWhenRequestIsInvalid() throws Exception {
         DriverRequest invalid = new DriverRequest(
-                "", "not-an-email", "secret123", "+258840000000", "L-123",
-                OffsetDateTime.now(BUSINESS_ZONE).plusYears(1));
+                "", ContactType.EMAIL, "", "L-123", null);
 
         mockMvc.perform(post("/api/v1/drivers")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalid)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.fullName").value(notNullValue()))
-                .andExpect(jsonPath("$.fieldErrors.email").value(notNullValue()));
+                .andExpect(jsonPath("$.fieldErrors.fullName").value(notNullValue()));
     }
 
     @Test
@@ -157,7 +152,7 @@ class DriverControllerTest {
     @Test
     void findAllShouldReturnPaginatedDrivers() throws Exception {
         createDriverAndGetId("jane@fandza.co.mz");
-                driverRepository.save(new Driver("Ana Bila", "ana@fandza.co.mz", "hash"));
+                driverRepository.save(new Driver("Ana Bila", ContactType.EMAIL, "ana@fandza.co.mz"));
 
         mockMvc.perform(get("/api/v1/drivers")
                         .with(guardianJwt()))

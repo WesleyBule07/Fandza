@@ -3,10 +3,11 @@ package com.fandza.ccs.Fandza.service;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianRequest;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianResponse;
 import com.fandza.ccs.Fandza.entity.LegalGuardian;
-import com.fandza.ccs.Fandza.exception.EmailAlreadyExistsException;
+import com.fandza.ccs.Fandza.exception.ContactAlreadyExistsException;
 import com.fandza.ccs.Fandza.exception.GuardianNotFoundException;
 import com.fandza.ccs.Fandza.mapper.GuardianMapper;
-import com.fandza.ccs.Fandza.repository.AppUserRepository;
+import com.fandza.ccs.Fandza.repository.UserRepository;
+import com.fandza.ccs.Fandza.util.ContactNormalizer;
 import com.fandza.ccs.Fandza.repository.LegalGuardianRepository;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -19,21 +20,21 @@ import org.springframework.transaction.annotation.Transactional;
 public class GuardianService {
 
     private final LegalGuardianRepository legalGuardianRepository;
-    private final AppUserRepository appUserRepository;
+    private final UserRepository userRepository;
     private final GuardianMapper guardianMapper;
 
     public GuardianService(
             LegalGuardianRepository legalGuardianRepository,
-            AppUserRepository appUserRepository,
+            UserRepository userRepository,
             GuardianMapper guardianMapper) {
         this.legalGuardianRepository = legalGuardianRepository;
-        this.appUserRepository = appUserRepository;
+        this.userRepository = userRepository;
         this.guardianMapper = guardianMapper;
     }
 
     public GuardianResponse create(GuardianRequest request) {
-        if (appUserRepository.existsByEmail(request.email())) {
-            throw new EmailAlreadyExistsException(request.email());
+        if (userRepository.existsByContactValue(ContactNormalizer.normalize(request.contactType(), request.contactValue()))) {
+            throw new ContactAlreadyExistsException(request.contactValue());
         }
         LegalGuardian guardian = guardianMapper.toEntity(request);
         LegalGuardian saved = legalGuardianRepository.save(guardian);

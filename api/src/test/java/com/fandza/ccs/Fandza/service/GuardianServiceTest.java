@@ -10,11 +10,13 @@ import static org.mockito.Mockito.when;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianRequest;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianResponse;
 import com.fandza.ccs.Fandza.entity.LegalGuardian;
-import com.fandza.ccs.Fandza.exception.EmailAlreadyExistsException;
+import com.fandza.ccs.Fandza.enums.ContactType;
+import com.fandza.ccs.Fandza.exception.ContactAlreadyExistsException;
 import com.fandza.ccs.Fandza.exception.GuardianNotFoundException;
+import com.fandza.ccs.Fandza.exception.InvalidContactException;
 import com.fandza.ccs.Fandza.mapper.GuardianMapper;
-import com.fandza.ccs.Fandza.repository.AppUserRepository;
 import com.fandza.ccs.Fandza.repository.LegalGuardianRepository;
+import com.fandza.ccs.Fandza.repository.UserRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,8 +25,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class GuardianServiceTest {
@@ -35,47 +35,54 @@ class GuardianServiceTest {
     private LegalGuardianRepository legalGuardianRepository;
 
     @Mock
-    private AppUserRepository appUserRepository;
+    private UserRepository userRepository;
 
-    private PasswordEncoder passwordEncoder;
     private GuardianService guardianService;
 
     @BeforeEach
     void setUp() {
-        passwordEncoder = new BCryptPasswordEncoder();
-        guardianService = new GuardianService(legalGuardianRepository, appUserRepository,
-                new GuardianMapper(passwordEncoder));
+        guardianService = new GuardianService(legalGuardianRepository, userRepository,
+                new GuardianMapper());
     }
 
-    private GuardianRequest validRequest(String email) {
-        return new GuardianRequest("Maria Sitoe", email, "secret123", "+258840000000");
+    private GuardianRequest validRequest(String contactValue) {
+        return new GuardianRequest("Maria Sitoe", ContactType.PHONE, contactValue);
     }
 
     @Test
-    void createShouldEncodePasswordAndMapFields() {
-        when(appUserRepository.existsByEmail("maria@fandza.co.mz")).thenReturn(false);
+    void createShouldNormalizePhoneAndStartPending() {
+        when(userRepository.existsByContactValue("+258840000000")).thenReturn(false);
         when(legalGuardianRepository.save(any(LegalGuardian.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        GuardianResponse response = guardianService.create(validRequest("maria@fandza.co.mz"));
+        GuardianResponse response = guardianService.create(validRequest("840000000"));
 
         ArgumentCaptor<LegalGuardian> captor = ArgumentCaptor.forClass(LegalGuardian.class);
         verify(legalGuardianRepository).save(captor.capture());
         LegalGuardian saved = captor.getValue();
-        assertThat(saved.getPassword()).isNotEqualTo("secret123");
-        assertThat(passwordEncoder.matches("secret123", saved.getPassword())).isTrue();
-        assertThat(saved.getPhoneNumber()).isEqualTo("+258840000000");
-        assertThat(response.fullName()).isEqualTo("Maria Sitoe");
-        assertThat(response.email()).isEqualTo("maria@fandza.co.mz");
+        assertThat(saved.getContactValue()).isEqualTo("+258840000000");
+        assertThat(saved.getContactType()).isEqualTo(ContactType.PHONE);
+        assertThat(saved.isContactVerified()).isFalse();
+        assertThat(saved.getAccountStatus().name()).isEqualTo("PENDING");
+        assertThat(response.contactValue()).isEqualTo("+258840000000");
         assertThat(response.id()).isNull();
     }
 
     @Test
-    void createShouldRejectDuplicateEmail() {
-        when(appUserRepository.existsByEmail("maria@fandza.co.mz")).thenReturn(true);
+    void createShouldRejectInvalidPhone() {
+        assertThatThrownBy(() -> guardianService.create(
+                new GuardianRequest("Maria", ContactType.PHONE, "12")))
+                .isInstanceOf(InvalidContactException.class);
 
-        assertThatThrownBy(() -> guardianService.create(validRequest("maria@fandza.co.mz")))
-                .isInstanceOf(EmailAlreadyExistsException.class);
+        verify(legalGuardianRepository, never()).save(any());
+    }
+
+    @Test
+    void createShouldRejectDuplicateContact() {
+        when(userRepository.existsByContactValue("+258840000000")).thenReturn(true);
+
+        assertThatThrownBy(() -> guardianService.create(validRequest("840000000")))
+                .isInstanceOf(ContactAlreadyExistsException.class);
 
         verify(legalGuardianRepository, never()).save(any());
     }

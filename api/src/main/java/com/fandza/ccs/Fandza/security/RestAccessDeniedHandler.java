@@ -5,8 +5,7 @@ import com.fandza.ccs.Fandza.exception.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -14,8 +13,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
-
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Africa/Maputo");
 
     private final ObjectMapper objectMapper;
 
@@ -29,7 +26,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         ErrorResponse body = new ErrorResponse(
-                OffsetDateTime.now(BUSINESS_ZONE),
+                Instant.now(),
                 HttpServletResponse.SC_FORBIDDEN,
                 "Forbidden",
                 "Access denied",

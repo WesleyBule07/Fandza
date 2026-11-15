@@ -1,29 +1,18 @@
 package com.fandza.ccs.Fandza.entity;
 
+import com.fandza.ccs.Fandza.enums.ContactType;
 import com.fandza.ccs.Fandza.enums.UserType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "legal_guardian")
-public class LegalGuardian extends AppUser {
-
-    @Column(name = "phone_number", length = 30)
-    private String phoneNumber;
+public class LegalGuardian extends User {
 
     protected LegalGuardian() {
     }
 
-    public LegalGuardian(String fullName, String email, String password) {
-        super(fullName, email, password, UserType.LEGAL_GUARDIAN);
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
+    public LegalGuardian(String fullName, ContactType contactType, String contactValue) {
+        super(fullName, contactType, contactValue, UserType.LEGAL_GUARDIAN);
     }
 }

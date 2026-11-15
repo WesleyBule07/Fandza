@@ -14,8 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianRequest;
-import com.fandza.ccs.Fandza.repository.AppUserRepository;
+import com.fandza.ccs.Fandza.enums.ContactType;
 import com.fandza.ccs.Fandza.repository.LegalGuardianRepository;
+import com.fandza.ccs.Fandza.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,7 @@ class GuardianControllerTest {
     private LegalGuardianRepository legalGuardianRepository;
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private UserRepository userRepository;
 
     @BeforeEach
     void cleanDatabase() {
@@ -59,11 +60,11 @@ class GuardianControllerTest {
 
     private void cleanTables() {
         legalGuardianRepository.deleteAll();
-        appUserRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     private GuardianRequest validRequest(String email) {
-        return new GuardianRequest("Maria Sitoe", email, "secret123", "+258840000000");
+        return new GuardianRequest("Maria Sitoe", ContactType.PHONE, "840000000");
     }
 
     private String createGuardianAndGetId(String email) throws Exception {
@@ -85,8 +86,8 @@ class GuardianControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(notNullValue()))
                 .andExpect(jsonPath("$.fullName").value("Maria Sitoe"))
-                .andExpect(jsonPath("$.email").value("maria@fandza.co.mz"))
-                .andExpect(jsonPath("$.phoneNumber").value("+258840000000"))
+                .andExpect(jsonPath("$.contactValue").value("+258840000000"))
+                .andExpect(jsonPath("$.contactValue").value("+258840000000"))
                 .andExpect(jsonPath("$.createdAt").value(notNullValue()))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.userType").doesNotExist());
@@ -108,29 +109,28 @@ class GuardianControllerTest {
 
     @Test
     void createShouldReturn400WithFieldErrorsWhenRequestIsInvalid() throws Exception {
-        GuardianRequest invalid = new GuardianRequest("", "not-an-email", "secret123", "");
+        GuardianRequest invalid = new GuardianRequest("", ContactType.PHONE, "");
 
         mockMvc.perform(post("/api/v1/guardians")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalid)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.fullName").value(notNullValue()))
-                .andExpect(jsonPath("$.fieldErrors.email").value(notNullValue()))
-                .andExpect(jsonPath("$.fieldErrors.phoneNumber").value(notNullValue()));
+                .andExpect(jsonPath("$.fieldErrors.contactValue").value(notNullValue()));
     }
 
     @Test
     void createShouldReturn409WhenEmailBelongsToDriver() throws Exception {
         mockMvc.perform(post("/api/v1/drivers")
                         .contentType(APPLICATION_JSON)
-                        .content("{\"fullName\":\"Jane Doe\",\"email\":\"shared@fandza.co.mz\","
-                                + "\"password\":\"secret123\",\"phoneNumber\":\"+258840000001\","
-                                + "\"licenseNumber\":\"L-1\",\"licenseExpiry\":\"2030-12-31T00:00:00+02:00\"}"))
+                        .content("{\"fullName\":\"Jane Doe\",\"contactType\":\"EMAIL\","
+                                + "\"contactValue\":\"shared@fandza.co.mz\",\"licenseNumber\":\"L-1\","
+                                + "\"licenseExpiry\":\"2030-12-31T00:00:00Z\"}"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/guardians")
                         .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest("shared@fandza.co.mz"))))
+                        .content(objectMapper.writeValueAsString(new GuardianRequest("Maria Sitoe", ContactType.EMAIL, "shared@fandza.co.mz"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
     }

@@ -4,28 +4,19 @@ import com.fandza.ccs.Fandza.dtos.driver.DriverRequest;
 import com.fandza.ccs.Fandza.dtos.driver.DriverResponse;
 import com.fandza.ccs.Fandza.entity.Driver;
 import com.fandza.ccs.Fandza.enums.AccountStatus;
-import com.fandza.ccs.Fandza.enums.UserType;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.fandza.ccs.Fandza.util.ContactNormalizer;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DriverMapper {
 
-    private final PasswordEncoder passwordEncoder;
-
-    public DriverMapper(PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
-
     public Driver toEntity(DriverRequest request) {
         Driver driver = new Driver(
-                request.fullName(),
-                request.email(),
-                passwordEncoder.encode(request.password()));
-        driver.setPhoneNumber(request.phoneNumber());
+                request.fullName().trim(),
+                request.contactType(),
+                ContactNormalizer.normalize(request.contactType(), request.contactValue()));
         driver.setLicenseNumber(request.licenseNumber());
         driver.setLicenseExpiry(request.licenseExpiry());
-        driver.setUserType(UserType.DRIVER);
         driver.setAccountStatus(AccountStatus.PENDING);
         return driver;
     }
@@ -34,8 +25,9 @@ public class DriverMapper {
         return new DriverResponse(
                 driver.getId(),
                 driver.getFullName(),
-                driver.getEmail(),
-                driver.getPhoneNumber(),
+                driver.getContactType(),
+                driver.getContactValue(),
+                driver.isContactVerified(),
                 driver.getLicenseNumber(),
                 driver.getLicenseExpiry(),
                 driver.getAccountStatus(),
