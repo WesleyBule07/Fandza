@@ -1,0 +1,33 @@
+{
+  "realm": "fandza",
+  "enabled": true,
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "sslRequired": "none",
+  "roles": {
+    "realm": [
+      { "name": "fandza-guardian", "description": "Encarregado de educacao" },
+      { "name": "fandza-driver", "description": "Motorista" },
+      { "name": "fandza-admin", "description": "Administrador da plataforma" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fandza-api",
+      "name": "Fandza API (SPA)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:3000/*",
+        "http://localhost:8080/login/oauth2/code/fandza"
+      ],
+      "webOrigins": ["+"]
+    }
+  ],
+  "defaultRoles": ["fandza-guardian"]
+}
