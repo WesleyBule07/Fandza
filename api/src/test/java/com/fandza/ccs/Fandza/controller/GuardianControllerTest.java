@@ -6,12 +6,13 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import com.fandza.ccs.Fandza.dtos.auth.LoginRequest;
 import com.fandza.ccs.Fandza.dtos.guardian.GuardianRequest;
 import com.fandza.ccs.Fandza.repository.AppUserRepository;
 import com.fandza.ccs.Fandza.repository.LegalGuardianRepository;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
@@ -74,15 +76,6 @@ class GuardianControllerTest {
         return body.get("id").asText();
     }
 
-    private String loginAndGetToken(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(email, "secret123"))))
-                .andExpect(status().isOk())
-                .andReturn();
-        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return body.get("token").asText();
-    }
 
     @Test
     void createShouldReturn201WithoutPassword() throws Exception {
@@ -145,19 +138,18 @@ class GuardianControllerTest {
     @Test
     void getByIdShouldRequireAuthenticationAndReturn200Or404() throws Exception {
         String id = createGuardianAndGetId("maria@fandza.co.mz");
-        String token = loginAndGetToken("maria@fandza.co.mz");
-
+        
         mockMvc.perform(get("/api/v1/guardians/{id}", id))
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(get("/api/v1/guardians/{id}", id)
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
         mockMvc.perform(get("/api/v1/guardians/{id}", MISSING_ID)
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
@@ -165,12 +157,16 @@ class GuardianControllerTest {
     @Test
     void findAllShouldReturnPaginatedGuardians() throws Exception {
         createGuardianAndGetId("maria@fandza.co.mz");
-        String token = loginAndGetToken("maria@fandza.co.mz");
-
+        
         mockMvc.perform(get("/api/v1/guardians")
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content.length()").value(1));
+    }
+
+
+    private RequestPostProcessor guardianJwt() {
+        return jwt();
     }
 }

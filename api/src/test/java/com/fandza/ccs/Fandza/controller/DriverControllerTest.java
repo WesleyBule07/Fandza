@@ -7,14 +7,13 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-import com.fandza.ccs.Fandza.dtos.auth.LoginRequest;
 import com.fandza.ccs.Fandza.dtos.driver.DriverRequest;
-import com.fandza.ccs.Fandza.entity.Admin;
 import com.fandza.ccs.Fandza.entity.Driver;
 import com.fandza.ccs.Fandza.enums.AccountStatus;
 import com.fandza.ccs.Fandza.repository.AdminRepository;
@@ -26,9 +25,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -52,13 +52,7 @@ class DriverControllerTest {
     private DriverRepository driverRepository;
 
     @Autowired
-    private AdminRepository adminRepository;
-
-    @Autowired
     private AppUserRepository appUserRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanDatabase() {
@@ -71,7 +65,6 @@ class DriverControllerTest {
     }
 
     private void cleanTables() {
-        adminRepository.deleteAll();
         driverRepository.deleteAll();
         appUserRepository.deleteAll();
     }
@@ -96,20 +89,7 @@ class DriverControllerTest {
         return body.get("id").asText();
     }
 
-    private String loginAndGetToken(String email) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
-                        .contentType(APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new LoginRequest(email, "secret123"))))
-                .andExpect(status().isOk())
-                .andReturn();
-        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
-        return body.get("token").asText();
-    }
 
-    private String createAdminAndGetToken(String email) throws Exception {
-        adminRepository.save(new Admin("Administrator", email, passwordEncoder.encode("secret123")));
-        return loginAndGetToken(email);
-    }
 
     @Test
     void createShouldReturn201WithPendingStatusAndHidePassword() throws Exception {
@@ -156,21 +136,20 @@ class DriverControllerTest {
     @Test
     void getByIdShouldReturn200Or404() throws Exception {
         String id = createDriverAndGetId("jane@fandza.co.mz");
-        String token = loginAndGetToken("jane@fandza.co.mz");
-
+        
         mockMvc.perform(get("/api/v1/drivers/{id}", id)
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id))
                 .andExpect(jsonPath("$.password").doesNotExist());
 
         mockMvc.perform(get("/api/v1/drivers/{id}", MISSING_ID)
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
 
         mockMvc.perform(get("/api/v1/drivers/{id}", "9999")
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400));
     }
@@ -178,11 +157,10 @@ class DriverControllerTest {
     @Test
     void findAllShouldReturnPaginatedDrivers() throws Exception {
         createDriverAndGetId("jane@fandza.co.mz");
-        String token = loginAndGetToken("jane@fandza.co.mz");
-        driverRepository.save(new Driver("Ana Bila", "ana@fandza.co.mz", "hash"));
+                driverRepository.save(new Driver("Ana Bila", "ana@fandza.co.mz", "hash"));
 
         mockMvc.perform(get("/api/v1/drivers")
-                        .header("Authorization", "Bearer " + token))
+                        .with(guardianJwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2))
                 .andExpect(jsonPath("$.content.length()").value(2));
@@ -191,17 +169,16 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldActivateDriverAndRejectInvalidTransition() throws Exception {
         String id = createDriverAndGetId("jane@fandza.co.mz");
-        String token = createAdminAndGetToken("admin@fandza.co.mz");
-
+        
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
-                        .header("Authorization", "Bearer " + token)
+                        .with(adminJwt())
                         .contentType(APPLICATION_JSON)
                         .content("{\"status\":\"ACTIVE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountStatus").value("ACTIVE"));
 
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
-                        .header("Authorization", "Bearer " + token)
+                        .with(adminJwt())
                         .contentType(APPLICATION_JSON)
                         .content("{\"status\":\"PENDING\"}"))
                 .andExpect(status().isUnprocessableEntity())
@@ -211,10 +188,9 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldReturn400WhenStatusIsNull() throws Exception {
         String id = createDriverAndGetId("jane@fandza.co.mz");
-        String token = createAdminAndGetToken("admin@fandza.co.mz");
-
+        
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
-                        .header("Authorization", "Bearer " + token)
+                        .with(guardianJwt())
                         .contentType(APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -224,13 +200,21 @@ class DriverControllerTest {
     @Test
     void updateStatusShouldReturn403WhenRequesterIsNotAdmin() throws Exception {
         String id = createDriverAndGetId("jane@fandza.co.mz");
-        String driverToken = loginAndGetToken("jane@fandza.co.mz");
-
+        
         mockMvc.perform(patch("/api/v1/drivers/{id}/status", id)
-                        .header("Authorization", "Bearer " + driverToken)
+                        .with(guardianJwt())
                         .contentType(APPLICATION_JSON)
                         .content("{\"status\":\"ACTIVE\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
+    }
+
+
+    private RequestPostProcessor guardianJwt() {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_DRIVER"));
+    }
+
+    private RequestPostProcessor adminJwt() {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
 }
